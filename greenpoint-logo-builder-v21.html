@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Greenpoint Logo Builder v21</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f0f0ed;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+  .label {
+    position: fixed;
+    top: 24px;
+    left: 28px;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #1a3a2a;
+    opacity: 0.5;
+  }
+  .hint {
+    position: fixed;
+    top: 24px;
+    right: 28px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #1a3a2a;
+    opacity: 0.4;
+    text-align: right;
+    line-height: 1.8;
+  }
+  canvas { cursor: grab; display: block; }
+  canvas:active { cursor: grabbing; }
+  /* canvas with its buttons centred directly underneath */
+  .canvasCol { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  button {
+    background: #1a3a2a;
+    color: #f0f0ed;
+    border: none;
+    padding: 10px 22px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+  button:hover { background: #2d6b47; }
+
+  /* ── Stage + texture panel ── */
+  .stage { display: flex; align-items: center; gap: 36px; }
+  .panel {
+    width: 264px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding: 20px;
+    background: #e6e6e1;
+    border-radius: 2px;
+    color: #1a3a2a;
+    font-size: 12px;
+  }
+  .panel h3 {
+    font-size: 11px; font-weight: normal;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    opacity: 0.55; margin-bottom: 6px;
+  }
+  .panel .target { font-size: 13px; margin-bottom: 18px; }
+  .panel .target small { display:block; font-size: 11px; opacity: 0.5; margin-top: 3px; }
+  .group { margin-bottom: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.chip {
+    background: transparent; color: #1a3a2a;
+    border: 1px solid rgba(26,58,42,0.3);
+    padding: 6px 10px; font-size: 10px;
+  }
+  button.chip:hover { background: rgba(26,58,42,0.08); }
+  button.chip.on, button.chip.on:hover { background: #1a3a2a; color: #f0f0ed; border-color: #1a3a2a; }
+  button.chip { transition: none; }
+  .slider { display: grid; grid-template-columns: 58px 1fr 34px; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .slider span:last-child { text-align: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: #2d6b47; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button.small { padding: 7px 12px; font-size: 10px; }
+  label.fileBtn {
+    display: inline-block; background: #1a3a2a; color: #f0f0ed;
+    padding: 7px 12px; font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; cursor: pointer; border-radius: 2px;
+  }
+  label.fileBtn:hover { background: #2d6b47; }
+  .status { font-size: 11px; line-height: 1.5; opacity: 0.6; margin-top: 8px; }
+  .status.bad { color: #a3321e; opacity: 1; }
+  body.dropping .panel { outline: 2px dashed #2d6b47; outline-offset: 4px; }
+  details summary { cursor: pointer; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.55; margin-bottom: 8px; }
+  textarea {
+    width: 100%; height: 170px; resize: vertical; white-space: pre; overflow: auto;
+    font: 11px/1.5 Menlo, Consolas, monospace;
+    color: #1a3a2a; background: #f4f4f1;
+    border: 1px solid rgba(26,58,42,0.2); border-radius: 2px;
+    padding: 8px; user-select: text;
+  }
+  .help { font-size: 10.5px; line-height: 1.6; opacity: 0.6; margin: 6px 0 8px; }
+  .err { color: #a3321e; font: 10.5px/1.5 Menlo, Consolas, monospace; white-space: pre-wrap; margin-top: 6px; }
+  .ok { color: #2d6b47; font-size: 11px; margin-top: 6px; }
+  input[type=text] {
+    width: 100%; font: 12px Menlo, Consolas, monospace; color: #1a3a2a;
+    background: #f4f4f1; border: 1px solid rgba(26,58,42,0.2); border-radius: 2px;
+    padding: 4px 6px; user-select: text;
+  }
+  .imgPalBox { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .imgPalBox #imgPalRow { width: 100%; }
+  label.check { display: flex; gap: 7px; align-items: flex-start; font-size: 11.5px; line-height: 1.4; margin-top: 10px; cursor: pointer; }
+  label.check input { margin-top: 2px; accent-color: #2d6b47; }
+  .analysis { margin-top: 12px; padding: 10px; background: #f4f4f1; border-radius: 2px; }
+  .anTop { display: flex; gap: 10px; align-items: center; }
+  .anThumb { width: 56px; height: auto; max-height: 56px; object-fit: contain; border-radius: 1px; }
+  .anName { font-size: 12px; margin-bottom: 5px; word-break: break-all; }
+  .analysis .bgchip { display: inline-flex; gap: 3px; padding: 3px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(26,58,42,0.15); }
+  .analysis .sw { width: 14px; height: 14px; border-radius: 1px; display: inline-block; }
+  .analysis ul { margin: 0; padding-left: 14px; font-size: 10.5px; line-height: 1.5; opacity: 0.75; }
+  .analysis li { margin-bottom: 3px; }
+  .divider { height: 1px; background: rgba(26,58,42,0.15); margin: 4px 0 18px; }
+  .sublabel { font-size: 11px; opacity: 0.55; margin-bottom: 8px; }
+  .palList { display: flex; flex-direction: column; gap: 6px; }
+  button.pal {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: transparent; color: #1a3a2a;
+    border: 1px solid rgba(26,58,42,0.18);
+    padding: 7px 9px; font-size: 12px; letter-spacing: 0; text-transform: none;
+    text-align: left; transition: none;
+  }
+  button.pal:hover { background: rgba(26,58,42,0.06); }
+  button.pal.on { border-color: #1a3a2a; box-shadow: inset 0 0 0 1px #1a3a2a; background: transparent; }
+  .pal .pname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pal .sws { display: flex; }
+  .pal .del { width: 18px; text-align: center; font-size: 15px; line-height: 1; opacity: 0; color: #1a3a2a; }
+  .pal:hover .del { opacity: 0.45; }
+  .pal .del:hover { opacity: 1; color: #a3321e; }
+  /* shape colors sit on a chip of the background color, like a mini logo */
+  .pal .bgchip { display: flex; gap: 3px; padding: 3px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(26,58,42,0.15); }
+  .pal .sw { width: 14px; height: 14px; border-radius: 1px; }
+  button.swatch {
+    width: 26px; height: 26px; padding: 0; border-radius: 2px;
+    border: 1px solid rgba(26,58,42,0.2); transition: none;
+  }
+  button.swatch.on { outline: 2px solid #1a3a2a; outline-offset: 2px; }
+  input[type=color] { width: 26px; height: 26px; padding: 0; border: 1px solid rgba(26,58,42,0.3); border-radius: 2px; background: none; cursor: pointer; }
+  button.ghost { background: transparent; color: #1a3a2a; border: 1px solid rgba(26,58,42,0.3); }
+  button.ghost:hover { background: rgba(26,58,42,0.08); }
+
+</style>
+</head>
+<body>
+<div class="label">Greenpoint — Logo Builder</div>
+<div class="hint">Click to select<br>Drag to move<br>Hold to rotate<br>Right-click to recolor<br>Drag background to pan<br>Double-click background to center</div>
+<div class="stage">
+<aside class="panel" id="panel">
+  <h3>Color</h3>
+  <div class="group">
+    <div id="palList" class="palList"></div>
+  </div>
+  <div class="group">
+    <label class="small fileBtn" for="fileImage">Palette from image</label>
+    <input type="file" id="fileImage" accept="image/*" hidden>
+    <label class="check"><input type="checkbox" id="autoStyle" checked> Also pick a material from the image's style</label>
+    <div class="status" id="imgStatus">Or drop an image anywhere on the page</div>
+    <div class="imgPalBox" id="imgPalBox" hidden>
+      <div id="imgPalRow"></div>
+      <button class="small ghost" id="btnSaveImgPal">Save to palettes</button>
+    </div>
+    <div class="analysis" id="analysis" hidden></div>
+  </div>
+  <div class="group" id="shapeColorBox">
+    <div class="sublabel">Shape color</div>
+    <div class="row" id="shapeSwatches"></div>
+  </div>
+
+  <div class="divider"></div>
+  <h3>Material</h3>
+  <div class="group">
+    <div class="chips" id="mods"></div>
+  </div>
+  <div class="group" id="matControls">
+    <label class="slider"><span>Cell</span><input type="range" id="sCell" min="4" max="40" step="1"><span id="vCell"></span></label>
+    <label class="slider"><span>Density</span><input type="range" id="sDensity" min="0.05" max="1" step="0.01"><span id="vDensity"></span></label>
+    <label class="slider"><span>Weight</span><input type="range" id="sWeight" min="0.1" max="1" step="0.01"><span id="vWeight"></span></label>
+    <label class="slider" id="charsRow"><span>Chars</span><input type="text" id="chars" maxlength="24" spellcheck="false"><span></span></label>
+    <div class="sublabel" style="margin-top:6px">Grid</div>
+    <div class="chips" id="gridMode">
+      <button class="chip" data-grid="shape">Follow shape</button>
+      <button class="chip" data-grid="page">Page grid</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="small" id="btnMatSeed">Reseed</button>
+      <button class="small" id="btnMatAll">Apply to all</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <h3>Shader texture</h3>
+  <div class="status" id="texNote" style="margin:0 0 12px">Shader textures show when the material is Solid.</div>
+  <div class="target" id="target"></div>
+
+  <div class="group">
+    <div class="chips" id="presets"></div>
+  </div>
+
+  <div class="group">
+    <label class="slider"><span>Scale</span><input type="range" id="sScale" min="1" max="60" step="0.5"><span id="vScale"></span></label>
+    <label class="slider"><span>Amount</span><input type="range" id="sAmount" min="0" max="1" step="0.01"><span id="vAmount"></span></label>
+    <label class="slider"><span>Angle</span><input type="range" id="sAngle" min="0" max="180" step="1"><span id="vAngle"></span></label>
+    <div class="row">
+      <button class="small" id="btnSeed">Reseed</button>
+      <button class="small" id="btnAll">Apply to all</button>
+    </div>
+  </div>
+
+  <div class="err" id="noGL" hidden>WebGL isn't available in this browser, so textures are off. Shapes render flat.</div>
+</aside>
+<div class="canvasCol">
+<canvas id="c"></canvas>
+<div class="controls">
+  <button id="btnShuffle">Shuffle</button>
+  <button id="btnDownload">Download PNG</button>
+  <button id="btnSvg">Download SVG</button>
+</div>
+</div>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 640, H = 520;
+// Render at device pixel ratio so shapes + textures stay sharp on retina
+const DPR = Math.min(window.devicePixelRatio||1, 3);
+canvas.width = W*DPR;
+canvas.height = H*DPR;
+canvas.style.width = W+'px';
+canvas.style.height = H+'px';
+// Where shape-space (0,0) sits on the canvas. Panning moves this view
+// origin only; shapes keep their coordinates, so page-grid materials
+// and exports are unaffected.
+const CENTER = { x: W/2, y: H/2 };
+let panning=null;
+const GAP = 16;
+
+const shapes = [
+  { id:0, type:'rect',   w:130, h:75, ci:0, color:'#2d6b47', x:-85,  y:-55,  angle:-20 },
+  { id:1, type:'rect',   w:110, h:32, ci:1, color:'#1a3a2a', x:45,   y:-85,  angle:15  },
+  { id:2, type:'circle', r:20,        ci:2, color:'#4caf50', x:85,   y:15,   angle:0   },
+  { id:3, type:'rect',   w:32,  h:80, ci:1, color:'#1a3a2a', x:-125, y:65,   angle:5   },
+  { id:4, type:'rect',   w:105, h:32, ci:1, color:'#1a3a2a', x:55,   y:85,   angle:-10 },
+];
+let selectedId=null; // textures are attached below, once PRESETS exists
+
+// ── SAT ───────────────────────────────────────────────────────
+function getCorners(s) {
+  const a = s.angle*Math.PI/180, cos=Math.cos(a), sin=Math.sin(a);
+  const hw=s.w/2, hh=s.h/2;
+  return [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([lx,ly])=>({
+    x: s.x+lx*cos-ly*sin, y: s.y+lx*sin+ly*cos
+  }));
+}
+function project(pts, ax, ay) {
+  let min=Infinity, max=-Infinity;
+  for(const p of pts){const d=p.x*ax+p.y*ay; if(d<min)min=d; if(d>max)max=d;}
+  return {min,max};
+}
+function axes(corners) {
+  return corners.map((c,i)=>{
+    const n=corners[(i+1)%corners.length];
+    const dx=n.x-c.x, dy=n.y-c.y, len=Math.sqrt(dx*dx+dy*dy)||1;
+    return {x:-dy/len, y:dx/len};
+  });
+}
+
+// Returns MTV to push A out of B. null if separated.
+function getOverlap(a, b) {
+  // circle-circle
+  if(a.type==='circle'&&b.type==='circle'){
+    const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy)||0.001;
+    const ov=a.r+b.r-d;
+    return ov>0?{depth:ov,nx:dx/d,ny:dy/d}:null;
+  }
+  // circle-rect
+  if(a.type==='circle'){
+    const ang=b.angle*Math.PI/180,cos=Math.cos(-ang),sin=Math.sin(-ang);
+    const cosA=Math.cos(ang),sinA=Math.sin(ang);
+    const hw=b.w/2,hh=b.h/2;
+    const dx=a.x-b.x,dy=a.y-b.y;
+    // circle centre in the rect's local frame
+    const lx=dx*cos-dy*sin,ly=dx*sin+dy*cos;
+    // local → world direction
+    const toWorld=(x,y)=>({nx:x*cosA-y*sinA, ny:x*sinA+y*cosA});
+
+    // Centre is INSIDE the rect: the closest point is the centre itself,
+    // so the old method gave a zero push direction. Push out through the
+    // nearest face instead.
+    if(Math.abs(lx)<hw&&Math.abs(ly)<hh){
+      const toX=hw-Math.abs(lx), toY=hh-Math.abs(ly);
+      if(toX<toY){
+        const n=toWorld(lx>=0?1:-1,0);
+        return {depth:toX+a.r,nx:n.nx,ny:n.ny};
+      }else{
+        const n=toWorld(0,ly>=0?1:-1);
+        return {depth:toY+a.r,nx:n.nx,ny:n.ny};
+      }
+    }
+
+    // Centre is outside: push away from the closest point on the rect
+    const cx=Math.max(-hw,Math.min(hw,lx));
+    const cy=Math.max(-hh,Math.min(hh,ly));
+    const clX=b.x+cx*cosA-cy*sinA,clY=b.y+cx*sinA+cy*cosA;
+    const edx=a.x-clX,edy=a.y-clY,dist=Math.sqrt(edx*edx+edy*edy);
+    const ov=a.r-dist;
+    if(ov<=0) return null;
+    if(dist<1e-6){ // centre exactly on an edge: use outward face normal
+      const n=Math.abs(lx)/hw>Math.abs(ly)/hh?toWorld(lx>=0?1:-1,0):toWorld(0,ly>=0?1:-1);
+      return {depth:a.r,nx:n.nx,ny:n.ny};
+    }
+    return {depth:ov,nx:edx/dist,ny:edy/dist};
+  }
+  if(b.type==='circle'){
+    const r=getOverlap(b,a);
+    return r?{depth:r.depth,nx:-r.nx,ny:-r.ny}:null;
+  }
+  // rect-rect SAT
+  const cA=getCorners(a),cB=getCorners(b);
+  const axs=[...axes(cA),...axes(cB)];
+  let minOv=Infinity,minNx=0,minNy=0;
+  for(const ax of axs){
+    const pa=project(cA,ax.x,ax.y),pb=project(cB,ax.x,ax.y);
+    const ov=Math.min(pa.max,pb.max)-Math.max(pa.min,pb.min);
+    if(ov<=0) return null;
+    if(ov<minOv){minOv=ov;minNx=ax.x;minNy=ax.y;}
+  }
+  const dx=a.x-b.x,dy=a.y-b.y;
+  if(dx*minNx+dy*minNy<0){minNx=-minNx;minNy=-minNy;}
+  return {depth:minOv,nx:minNx,ny:minNy};
+}
+
+// Push every shape away from every other — one-directional per pair
+function resolveAll(shapeList, iters) {
+  for(let iter=0;iter<(iters||500);iter++){
+    let any=false;
+    for(let i=0;i<shapeList.length;i++){
+      for(let j=0;j<shapeList.length;j++){
+        if(i===j) continue;
+        const ov=getOverlap(shapeList[i],shapeList[j]);
+        if(ov&&ov.depth>0){
+          shapeList[i].x+=ov.nx*(ov.depth+GAP);
+          shapeList[i].y+=ov.ny*(ov.depth+GAP);
+          any=true;
+        }
+      }
+    }
+    if(!any) break;
+  }
+}
+
+function resolveOne(moved, others, iters) {
+  for(let iter=0;iter<(iters||200);iter++){
+    let any=false;
+    for(const other of others){
+      if(other.id===moved.id) continue;
+      const ov=getOverlap(moved,other);
+      if(ov&&ov.depth>0){
+        moved.x+=ov.nx*(ov.depth+GAP);
+        moved.y+=ov.ny*(ov.depth+GAP);
+        any=true;
+      }
+    }
+    if(!any) break;
+  }
+}
+
+// ── Texture engine (WebGL fragment shaders) ──────────────────
+// Each shape carries a `tex` config. Its shader is rendered once into
+// an offscreen canvas in the shape's LOCAL space (so the texture turns
+// with the shape), cached, then drawn + clipped in drawShape().
+
+const SHADER_HEADER = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 v_uv;
+uniform vec2  u_size;     // shape size in px
+uniform float u_px;       // render resolution multiplier
+uniform vec3  u_color;    // shape colour
+uniform float u_scale, u_amount, u_angle, u_seed;
+uniform sampler2D u_image;
+uniform vec2  u_imgSize;
+uniform float u_hasImage;
+float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float noise(vec2 p){ vec2 i=floor(p),f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x), mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x), u.y); }
+float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<5;i++){ v+=a*noise(p); p*=2.0; a*=0.5; } return v; }
+mat2 rot(float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c); }
+vec3 light(){ return mix(u_color, vec3(0.94,0.94,0.93), 0.35); }
+vec4 img(vec2 uv){ // cover-fit the uploaded image
+  float ra=u_size.x/u_size.y, ri=u_imgSize.x/max(u_imgSize.y,1.0);
+  vec2 s = ra>ri ? vec2(1.0, ri/ra) : vec2(ra/ri, 1.0);
+  return texture2D(u_image, (uv-0.5)*s+0.5);
+}
+`;
+const SHADER_FOOTER = `
+void main(){ gl_FragColor = shade(v_uv*u_size, v_uv); }
+`;
+const HEADER_LINES = SHADER_HEADER.split('\n').length - 1;
+
+const PRESETS = {
+  flat: { label:'Flat', scale:10, amount:0.5, angle:45, src:
+`vec4 shade(vec2 p, vec2 uv) {
+  return vec4(u_color, 1.0);
+}`},
+  grain: { label:'Grain', scale:4, amount:0.45, angle:0, src:
+`// Film grain: per-cell random brightness
+vec4 shade(vec2 p, vec2 uv) {
+  float g = hash(floor(p / max(u_scale * 0.25, 0.25)) + u_seed);
+  vec3 col = u_color * (1.0 + (g - 0.5) * u_amount);
+  return vec4(col, 1.0);
+}`},
+  halftone: { label:'Halftone', scale:7, amount:0.8, angle:45, src:
+`// Rotated dot grid, dots grow across the shape
+vec4 shade(vec2 p, vec2 uv) {
+  vec2 q = rot(radians(u_angle)) * p / u_scale;
+  float d = length(fract(q) - 0.5);
+  float r = 0.5 * sqrt(u_amount * mix(0.15, 1.0, uv.x));
+  float aa = 1.0 / (u_scale * u_px);
+  float dotMask = 1.0 - smoothstep(r - aa, r + aa, d);
+  return vec4(mix(u_color, light(), dotMask), 1.0);
+}`},
+  lines: { label:'Lines', scale:6, amount:0.3, angle:45, src:
+`// Parallel lines; amount = line thickness
+vec4 shade(vec2 p, vec2 uv) {
+  float v = fract((rot(radians(u_angle)) * p).x / u_scale);
+  float t = u_amount * 0.5;
+  float aa = 1.0 / (u_scale * u_px);
+  float line = smoothstep(0.5 - t - aa, 0.5 - t + aa, v)
+             - smoothstep(0.5 + t - aa, 0.5 + t + aa, v);
+  return vec4(mix(u_color, light(), line), 1.0);
+}`},
+  noise: { label:'Noise', scale:12, amount:0.5, angle:0, src:
+`// Soft cloudy fbm noise
+vec4 shade(vec2 p, vec2 uv) {
+  float n = fbm(p / (u_scale * 4.0) + u_seed * 13.1);
+  vec3 col = u_color * (1.0 + (n - 0.5) * u_amount * 1.6);
+  return vec4(col, 1.0);
+}`},
+};
+
+function makeTex(preset){
+  const P=PRESETS[preset];
+  return {preset, src:P.src, scale:P.scale, amount:P.amount, angle:P.angle,
+          seed:Math.random()*100, img:null};
+}
+
+const glCanvas=document.createElement('canvas');
+const gl=glCanvas.getContext('webgl',{premultipliedAlpha:false,preserveDrawingBuffer:true});
+const programs=new Map();   // src -> {prog, id} | {error}
+const texCache=new Map();   // key -> canvas
+let progSeq=0, imgSeq=0, quadBuf=null, dummyTex=null;
+
+if(gl){
+  quadBuf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,quadBuf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  dummyTex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,dummyTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
+}
+
+function compile(src){
+  if(programs.has(src)) return programs.get(src);
+  const mk=(type,code)=>{
+    const sh=gl.createShader(type);
+    gl.shaderSource(sh,code);gl.compileShader(sh);
+    if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){
+      const log=gl.getShaderInfoLog(sh)||'Compile failed';
+      gl.deleteShader(sh);throw new Error(log);
+    }
+    return sh;
+  };
+  let result;
+  try{
+    const vs=mk(gl.VERTEX_SHADER,
+      'attribute vec2 a_pos;varying vec2 v_uv;void main(){v_uv=a_pos*0.5+0.5;gl_Position=vec4(a_pos,0.0,1.0);}');
+    const fs=mk(gl.FRAGMENT_SHADER,SHADER_HEADER+src+SHADER_FOOTER);
+    const prog=gl.createProgram();
+    gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
+    if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)||'Link failed');
+    result={prog,id:++progSeq};
+  }catch(e){
+    // Point error line numbers at the user's code, not the hidden header
+    result={error:String(e.message).replace(/\u0000/g,'').trim().replace(/ERROR: 0:(\d+)/g,(m,n)=>'Line '+(n-HEADER_LINES))};
+  }
+  programs.set(src,result);
+  return result;
+}
+
+function hexToRgb(h){const n=parseInt(h.slice(1),16);return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255];}
+
+function glImageTex(img){
+  if(!img._glTex){
+    const t=gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    img._glTex=t;
+  }
+  return img._glTex;
+}
+
+// Returns a canvas with the shape's texture (w×h logical px at px resolution),
+// or null when the shape should just be filled flat.
+function getTexture(s,px){
+  const t=s.tex;
+  if(!gl||!t||t.preset==='flat') return null;
+  const P=compile(t.src);
+  if(P.error) return null;
+  const w=s.type==='circle'?s.r*2:s.w, h=s.type==='circle'?s.r*2:s.h;
+  const pw=Math.min(4096,Math.max(1,Math.ceil(w*px))), ph=Math.min(4096,Math.max(1,Math.ceil(h*px)));
+  const key=[P.id,s.color,pw,ph,w,h,t.scale,t.amount,t.angle,t.seed.toFixed(3),t.img?t.img._id:0].join('|');
+  if(texCache.has(key)) return texCache.get(key);
+
+  glCanvas.width=pw;glCanvas.height=ph;
+  gl.viewport(0,0,pw,ph);
+  gl.useProgram(P.prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER,quadBuf);
+  const loc=gl.getAttribLocation(P.prog,'a_pos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  const U=n=>gl.getUniformLocation(P.prog,n);
+  gl.uniform2f(U('u_size'),w,h);
+  gl.uniform1f(U('u_px'),pw/w);
+  gl.uniform3fv(U('u_color'),hexToRgb(s.color));
+  gl.uniform1f(U('u_scale'),t.scale);
+  gl.uniform1f(U('u_amount'),t.amount);
+  gl.uniform1f(U('u_angle'),t.angle);
+  gl.uniform1f(U('u_seed'),t.seed);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,t.img?glImageTex(t.img):dummyTex);
+  gl.uniform1i(U('u_image'),0);
+  gl.uniform2f(U('u_imgSize'),t.img?t.img.width:1,t.img?t.img.height:1);
+  gl.uniform1f(U('u_hasImage'),t.img?1:0);
+  gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+
+  const out=document.createElement('canvas');
+  out.width=pw;out.height=ph;
+  out.getContext('2d').drawImage(glCanvas,0,0);
+  if(texCache.size>200) texCache.clear();
+  texCache.set(key,out);
+  return out;
+}
+
+// ── Material: crisp vector modules on a grid ──────────────────
+// The shape is rebuilt out of grid cells; each cell is drawn as a
+// module (square, dot, glyph…). Everything is vector, so it stays
+// sharp on screen, in the 3x PNG and in the SVG.
+const MODULES = {
+  solid:  {label:'Solid'},
+  pixel:  {label:'Pixel',  cell:10, density:0.8, weight:1},
+  cross:  {label:'Cross',  cell:12, density:1,   weight:0.7},
+  dots:   {label:'Dots',   cell:10, density:1,   weight:0.75},
+  glyph:  {label:'Glyph',  cell:11, density:1,   weight:0.9},
+  binary: {label:'Binary', cell:12, density:1,   weight:0.6},
+  lines:  {label:'Lines',  cell:8,  density:1,   weight:0.35},
+};
+function makeMat(module,keep){
+  const M=MODULES[module];
+  return Object.assign({module,cell:M.cell||10,density:M.density||1,weight:M.weight||1,
+    grid:'shape',chars:'o-r-o',seed:Math.floor(Math.random()*1e6)},keep||{});
+}
+// Deterministic per-cell random in [0,1)
+function cellRand(s,i,j,k){
+  let h=Math.imul(i|0,73856093)^Math.imul(j|0,19349663)^Math.imul(k+1,83492791)
+       ^Math.imul(s.id+1,2654435761)^Math.imul(s.mat.seed|0,40503);
+  h=Math.imul(h^(h>>>15),2246822507);h=Math.imul(h^(h>>>13),3266489909);h^=h>>>16;
+  return (h>>>0)/4294967296;
+}
+function insideShape(s,x,y){
+  const dx=x-s.x,dy=y-s.y;
+  if(s.type==='circle') return dx*dx+dy*dy<=s.r*s.r;
+  const a=-s.angle*Math.PI/180,c=Math.cos(a),n=Math.sin(a);
+  const lx=dx*c-dy*n,ly=dx*n+dy*c;
+  return Math.abs(lx)<=s.w/2&&Math.abs(ly)<=s.h/2;
+}
+// Calls fn(i,j,cx,cy,cw,ch) for every cell that belongs to the shape.
+// 'shape' grid: local coords (rotates with the shape, cells stretched to fit exactly).
+// 'page' grid:  shared canvas grid, unrotated; the shape becomes a pixel silhouette.
+function eachCell(s,fn){
+  const m=s.mat,u=m.cell;
+  if(m.grid==='shape'){
+    const w=s.type==='circle'?s.r*2:s.w,h=s.type==='circle'?s.r*2:s.h;
+    const cols=Math.max(1,Math.round(w/u)),rows=Math.max(1,Math.round(h/u));
+    const cw=w/cols,ch=h/rows;
+    for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
+      const cx=-w/2+(i+0.5)*cw,cy=-h/2+(j+0.5)*ch;
+      if(s.type==='circle'&&cx*cx+cy*cy>s.r*s.r) continue;
+      fn(i,j,cx,cy,cw,ch);
+    }
+  }else{
+    let x0,y0,x1,y1;
+    if(s.type==='circle'){x0=s.x-s.r;x1=s.x+s.r;y0=s.y-s.r;y1=s.y+s.r;}
+    else{const c=getCorners(s);x0=Math.min(...c.map(p=>p.x));x1=Math.max(...c.map(p=>p.x));y0=Math.min(...c.map(p=>p.y));y1=Math.max(...c.map(p=>p.y));}
+    for(let j=Math.floor(y0/u);j<=Math.floor(y1/u);j++)for(let i=Math.floor(x0/u);i<=Math.floor(x1/u);i++){
+      const cx=(i+0.5)*u,cy=(j+0.5)*u;
+      if(insideShape(s,cx,cy)) fn(i,j,cx,cy,u,u);
+    }
+  }
+}
+// Draws the modules through a painter (canvas or SVG), so both stay identical.
+function emitModules(s,P){
+  const m=s.mat,chars=[...(m.chars||'o')];
+  eachCell(s,(i,j,cx,cy,cw,ch)=>{
+    if(cellRand(s,i,j,0)>=m.density) return;
+    const d=Math.min(cw,ch),wt=m.weight,lw=Math.max(0.75,d*0.16*wt);
+    const e=0.3; // tiny overlap so touching squares never show hairline seams
+    switch(m.module){
+      case 'pixel':{
+        const full=wt>=0.999,sw=cw*wt+(full?e*2:0),sh=ch*wt+(full?e*2:0);
+        P.rect(cx-sw/2,cy-sh/2,sw,sh);break;
+      }
+      case 'dots': P.circle(cx,cy,d/2*wt);break;
+      case 'cross':{
+        const a=d*0.42*wt;
+        if(cellRand(s,i,j,1)<0.5){P.line(cx-a,cy,cx+a,cy,lw);P.line(cx,cy-a,cx,cy+a,lw);}
+        else for(let k=0;k<4;k++){const t=k*Math.PI/4,c=Math.cos(t)*a,n=Math.sin(t)*a;P.line(cx-c,cy-n,cx+c,cy+n,lw);}
+        break;
+      }
+      case 'glyph':{
+        const t=chars[((i%chars.length)+chars.length)%chars.length];
+        if(t&&t.trim()) P.text(t,cx,cy,d*1.15*wt);
+        break;
+      }
+      case 'binary':
+        if(cellRand(s,i,j,1)<0.5) P.rect(cx-cw/2-e,cy-ch/2-e,cw+e*2,ch+e*2);
+        else{P.line(cx,cy-ch/2,cx,cy+ch/2,lw);P.line(cx-cw/2,cy,cx+cw/2,cy,lw);P.circle(cx,cy,d*0.3*wt);}
+        break;
+      case 'lines': P.rect(cx-cw*wt*0.25,cy-ch/2-e,cw*wt*0.5,ch+e*2);break;
+    }
+  });
+}
+function canvasPainter(c){
+  c.lineCap='butt';c.textAlign='center';c.textBaseline='middle';
+  return {
+    rect:(x,y,w,h)=>c.fillRect(x,y,w,h),
+    circle:(x,y,r)=>{c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();},
+    line:(x1,y1,x2,y2,lw)=>{c.lineWidth=lw;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();},
+    text:(t,x,y,size)=>{c.font=`${size}px Menlo, Consolas, monospace`;c.fillText(t,x,y);},
+  };
+}
+function svgPainter(){
+  const out=[],f=n=>+n.toFixed(2);
+  const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return {out,
+    rect:(x,y,w,h)=>out.push(`<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}"/>`),
+    circle:(x,y,r)=>out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}"/>`),
+    line:(x1,y1,x2,y2,lw)=>out.push(`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke-width="${f(lw)}"/>`),
+    text:(t,x,y,size)=>out.push(`<text x="${f(x)}" y="${f(y)}" font-size="${f(size)}">${esc(t)}</text>`),
+  };
+}
+function drawModules(context,s,alpha){
+  context.save();
+  context.globalAlpha=alpha!==undefined?alpha:1;
+  context.fillStyle=context.strokeStyle=s.color;
+  context.translate(CENTER.x,CENTER.y);
+  if(s.mat.grid==='shape'){context.translate(s.x,s.y);context.rotate(s.angle*Math.PI/180);}
+  emitModules(s,canvasPainter(context));
+  context.restore();
+}
+function svgModules(s){
+  const P=svgPainter();emitModules(s,P);
+  const f=n=>+n.toFixed(2);
+  const tf=s.mat.grid==='shape'?` transform="translate(${f(s.x)} ${f(s.y)}) rotate(${f(s.angle)})"`:'';
+  return `  <g fill="${s.color}" stroke="${s.color}" stroke-width="0" font-family="Menlo, Consolas, monospace" text-anchor="middle" dominant-baseline="central"${tf}>\n    ${P.out.join('\n    ')}\n  </g>`;
+}
+const hasModules=s=>s.mat&&s.mat.module!=='solid';
+
+// ── Draw ──────────────────────────────────────────────────────
+function drawShape(context,s,alpha,px){
+  if(hasModules(s)){drawModules(context,s,alpha);return;}
+  context.save();
+  context.globalAlpha=alpha!==undefined?alpha:1;
+  context.translate(CENTER.x+s.x,CENTER.y+s.y);
+  context.rotate(s.angle*Math.PI/180);
+  const tex=getTexture(s,px||DPR);
+  if(s.type==='circle'){
+    context.beginPath();context.arc(0,0,s.r,0,Math.PI*2);
+    if(tex){context.clip();context.drawImage(tex,-s.r,-s.r,s.r*2,s.r*2);}
+    else{context.fillStyle=s.color;context.fill();}
+  }else{
+    if(tex) context.drawImage(tex,-s.w/2,-s.h/2,s.w,s.h);
+    else{context.fillStyle=s.color;context.fillRect(-s.w/2,-s.h/2,s.w,s.h);}
+  }
+  context.restore();
+}
+function drawSelection(s){
+  ctx.save();
+  ctx.translate(CENTER.x+s.x,CENTER.y+s.y);
+  ctx.rotate(s.angle*Math.PI/180);
+  // outline must stay visible on light and dark backgrounds
+  const [r,g,b]=hexToRgb(BG),lum=0.299*r+0.587*g+0.114*b;
+  ctx.strokeStyle=lum>0.5?'#1a3a2a':'#f0f0ed';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  const pad=5;
+  if(s.type==='circle'){ctx.beginPath();ctx.arc(0,0,s.r+pad,0,Math.PI*2);ctx.stroke();}
+  else ctx.strokeRect(-s.w/2-pad,-s.h/2-pad,s.w+pad*2,s.h+pad*2);
+  ctx.restore();
+}
+function draw(ghostId,ghostX,ghostY){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+  shapes.forEach(s=>{
+    if(ghostId!==undefined&&s.id===ghostId)
+      drawShape(ctx,{...s,x:ghostX,y:ghostY},0.2);
+    drawShape(ctx,s,1);
+  });
+  const sel=shapes.find(s=>s.id===selectedId);
+  if(sel) drawSelection(sel);
+}
+
+// ── Hit test ──────────────────────────────────────────────────
+function getShape(mx,my){
+  for(let i=shapes.length-1;i>=0;i--){
+    const s=shapes[i];
+    const dx=mx-(CENTER.x+s.x),dy=my-(CENTER.y+s.y);
+    const cos=Math.cos(-s.angle*Math.PI/180),sin=Math.sin(-s.angle*Math.PI/180);
+    const lx=dx*cos-dy*sin,ly=dx*sin+dy*cos;
+    if(s.type==='circle'){if(dx*dx+dy*dy<=s.r*s.r)return s;}
+    else{if(Math.abs(lx)<=s.w/2&&Math.abs(ly)<=s.h/2)return s;}
+  }
+  return null;
+}
+
+// ── Snap ──────────────────────────────────────────────────────
+function animateSnap(shape,tx,ty,onDone){
+  const sx=shape.x,sy=shape.y,t0=performance.now(),dur=200;
+  (function step(now){
+    const t=Math.min((now-t0)/dur,1),e=1-Math.pow(1-t,3);
+    shape.x=sx+(tx-sx)*e;shape.y=sy+(ty-sy)*e;draw();
+    t<1?requestAnimationFrame(step):(shape.x=tx,shape.y=ty,draw(),onDone&&onDone());
+  })(t0);
+}
+
+// ── Interaction ───────────────────────────────────────────────
+let dragging=null,dragOffX=0,dragOffY=0;
+let ghostX=0,ghostY=0,mdTime=0,mdX=0,mdY=0;
+let isAnimating=false;
+
+// Long-press rotation state
+const LONG_PRESS_MS = 400;   // ms before rotation starts
+const ROT_SPEED = 3;          // degrees per frame
+let longPressTimer=null, rotating=null, rotateRAF=null;
+
+function startRotating(s){
+  rotating=s;
+  function spin(){
+    if(!rotating) return;
+    rotating.angle=(rotating.angle+ROT_SPEED)%360;
+    draw();
+    rotateRAF=requestAnimationFrame(spin);
+  }
+  rotateRAF=requestAnimationFrame(spin);
+}
+function stopRotating(){
+  rotating=null;
+  if(rotateRAF){cancelAnimationFrame(rotateRAF);rotateRAF=null;}
+}
+
+function startDrag(mx,my){
+  if(isAnimating)return;
+  const s=getShape(mx,my);
+  if((s?s.id:null)!==selectedId){selectedId=s?s.id:null;updatePanel();draw();}
+  if(!s){ // empty space → pan the whole view
+    panning={x:mx,y:my,cx:CENTER.x,cy:CENTER.y};
+    return;
+  }
+  dragging=s;ghostX=s.x;ghostY=s.y;
+  dragOffX=CENTER.x+s.x-mx;dragOffY=CENTER.y+s.y-my;
+  mdTime=Date.now();mdX=mx;mdY=my;
+  // Start long-press timer
+  // moveDrag cancels this timer once the pointer moves > 8px,
+  // so if it fires, the press was held in place.
+  if(s.type==='circle') return; // rotating a circle does nothing visible
+  longPressTimer=setTimeout(()=>{
+    longPressTimer=null;
+    if(!dragging) return;
+    dragging.x=ghostX;dragging.y=ghostY; // undo sub-8px jitter
+    startRotating(dragging);
+    dragging=null;
+    draw();
+  }, LONG_PRESS_MS);
+}
+function moveDrag(mx,my){
+  if(panning){
+    // whole pixels keep page-grid modules crisp
+    CENTER.x=Math.round(panning.cx+mx-panning.x);
+    CENTER.y=Math.round(panning.cy+my-panning.y);
+    draw();return;
+  }
+  if(!dragging)return;
+  const moved=Math.sqrt((mx-mdX)**2+(my-mdY)**2);
+  // If moved significantly, cancel long-press
+  if(moved>8&&longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}
+  dragging.x=mx+dragOffX-CENTER.x;
+  dragging.y=my+dragOffY-CENTER.y;
+  draw(dragging.id,ghostX,ghostY);
+}
+// Push a shape clear of the others, animating to the resolved spot
+function settle(s){
+  const prex=s.x,prey=s.y;
+  resolveOne(s,shapes.filter(o=>o.id!==s.id));
+  const tx=s.x,ty=s.y;
+  s.x=prex;s.y=prey;
+  if(tx===prex&&ty===prey){draw();return;}
+  isAnimating=true;
+  animateSnap(s,tx,ty,()=>{isAnimating=false;});
+}
+function endDrag(mx,my){
+  if(panning){panning=null;return;}
+  if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}
+  // Stop rotation on release, then push it clear of neighbours
+  if(rotating){const s=rotating;stopRotating();settle(s);return;}
+  if(!dragging)return;
+  const s=dragging;
+  dragging=null;
+  settle(s);
+}
+
+canvas.addEventListener('mousedown',e=>{const r=canvas.getBoundingClientRect();startDrag(e.clientX-r.left,e.clientY-r.top);});
+// move/up on window so drags and pans keep going past the canvas edge
+window.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();moveDrag(e.clientX-r.left,e.clientY-r.top);});
+window.addEventListener('mouseup',  e=>{const r=canvas.getBoundingClientRect();endDrag(e.clientX-r.left,e.clientY-r.top);});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),t=e.touches[0];startDrag(t.clientX-r.left,t.clientY-r.top);},{passive:false});
+canvas.addEventListener('touchmove', e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),t=e.touches[0];moveDrag(t.clientX-r.left,t.clientY-r.top);},{passive:false});
+canvas.addEventListener('touchend',  e=>{e.preventDefault();const r=canvas.getBoundingClientRect(),t=e.changedTouches[0];endDrag(t.clientX-r.left,t.clientY-r.top);},{passive:false});
+// Smoothly move the view so the logo's bounding box sits in the middle
+function recenterView(animate){
+  const b=getBounds();
+  const tx=Math.round(W/2-(b.x+b.w/2)),ty=Math.round(H/2-(b.y+b.h/2));
+  if(!animate){CENTER.x=tx;CENTER.y=ty;draw();return;}
+  const sx=CENTER.x,sy=CENTER.y,t0=performance.now(),dur=260;
+  (function step(now){
+    const t=Math.min((now-t0)/dur,1),e=1-Math.pow(1-t,3);
+    CENTER.x=Math.round(sx+(tx-sx)*e);CENTER.y=Math.round(sy+(ty-sy)*e);draw();
+    if(t<1) requestAnimationFrame(step);
+  })(t0);
+}
+canvas.addEventListener('dblclick',e=>{
+  const r=canvas.getBoundingClientRect();
+  if(!getShape(e.clientX-r.left,e.clientY-r.top)) recenterView(true);
+});
+canvas.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  const s=getShape(e.clientX-r.left,e.clientY-r.top);
+  if(s){s.ci=(s.custom?s.ci:s.ci+1)%pal().colors.length;s.custom=false;s.color=slotColor(s.ci);renderShapeColor();draw();}
+});
+
+// ── Shuffle ───────────────────────────────────────────────────
+document.getElementById('btnShuffle').addEventListener('click',()=>{
+  if(isAnimating)return;
+  // Randomize angles
+  shapes.forEach(s=>{s.angle=s.type==='circle'?0:(Math.random()-0.5)*60;});
+  // Stack all at center with tiny jitter
+  shapes.forEach(s=>{s.x=(Math.random()-0.5)*6;s.y=(Math.random()-0.5)*6;});
+  // Physics push apart — guaranteed no overlap
+  resolveAll(shapes,500);
+  // Re-center
+  const cx=shapes.reduce((sum,s)=>sum+s.x,0)/shapes.length;
+  const cy=shapes.reduce((sum,s)=>sum+s.y,0)/shapes.length;
+  shapes.forEach(s=>{s.x-=cx;s.y-=cy;});
+  CENTER.x=W/2;CENTER.y=H/2; // shuffle always lands in the middle
+  draw();
+});
+
+// ── Download ──────────────────────────────────────────────────
+const EXPORT_SCALE = 3;   // PNG resolution multiplier
+const EXPORT_PAD   = 40;  // padding around the mark (px, before scaling)
+
+// Tight bounding box of all shapes, in shape space
+function getBounds(){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  const add=(x,y)=>{if(x<minX)minX=x;if(y<minY)minY=y;if(x>maxX)maxX=x;if(y>maxY)maxY=y;};
+  shapes.forEach(s=>{
+    if(s.type==='circle'){add(s.x-s.r,s.y-s.r);add(s.x+s.r,s.y+s.r);}
+    else getCorners(s).forEach(c=>add(c.x,c.y));
+  });
+  return {
+    x:minX-EXPORT_PAD, y:minY-EXPORT_PAD,
+    w:maxX-minX+EXPORT_PAD*2, h:maxY-minY+EXPORT_PAD*2
+  };
+}
+function triggerDownload(href,name){
+  const link=document.createElement('a');
+  link.download=name;link.href=href;link.click();
+}
+
+document.getElementById('btnDownload').addEventListener('click',()=>{
+  const b=getBounds();
+  const tmp=document.createElement('canvas');
+  tmp.width=Math.ceil(b.w*EXPORT_SCALE);
+  tmp.height=Math.ceil(b.h*EXPORT_SCALE);
+  const tc=tmp.getContext('2d');
+  tc.fillStyle=BG;tc.fillRect(0,0,tmp.width,tmp.height);
+  tc.scale(EXPORT_SCALE,EXPORT_SCALE);
+  // Export ignores the current pan: temporarily put the view origin
+  // where the logo's bounds start at 0,0, draw, then restore.
+  const view={x:CENTER.x,y:CENTER.y};
+  CENTER.x=-b.x;CENTER.y=-b.y;
+  shapes.forEach(s=>drawShape(tc,s,1,EXPORT_SCALE));
+  CENTER.x=view.x;CENTER.y=view.y;
+  triggerDownload(tmp.toDataURL('image/png'),'greenpoint-logo@3x.png');
+});
+
+document.getElementById('btnSvg').addEventListener('click',()=>{
+  const b=getBounds();
+  const f=n=>+n.toFixed(2);
+  const els=shapes.map(s=>{
+    if(hasModules(s)) return svgModules(s);
+    const tex=getTexture(s,EXPORT_SCALE);
+    if(s.type==='circle'){
+      if(!tex) return `  <circle cx="${f(s.x)}" cy="${f(s.y)}" r="${f(s.r)}" fill="${s.color}"/>`;
+      // textured circle: raster image clipped to a vector circle
+      return `  <g transform="translate(${f(s.x)} ${f(s.y)})">
+    <clipPath id="clip${s.id}"><circle r="${f(s.r)}"/></clipPath>
+    <image href="${tex.toDataURL('image/png')}" x="${f(-s.r)}" y="${f(-s.r)}" width="${f(s.r*2)}" height="${f(s.r*2)}" preserveAspectRatio="none" clip-path="url(#clip${s.id})"/>
+  </g>`;
+    }
+    const tf=`translate(${f(s.x)} ${f(s.y)}) rotate(${f(s.angle)})`;
+    if(!tex) return `  <rect x="${f(-s.w/2)}" y="${f(-s.h/2)}" width="${f(s.w)}" height="${f(s.h)}" fill="${s.color}" transform="${tf}"/>`;
+    return `  <image href="${tex.toDataURL('image/png')}" x="${f(-s.w/2)}" y="${f(-s.h/2)}" width="${f(s.w)}" height="${f(s.h)}" preserveAspectRatio="none" transform="${tf}"/>`;
+  }).join('\n');
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${f(b.x)} ${f(b.y)} ${f(b.w)} ${f(b.h)}" width="${f(b.w)}" height="${f(b.h)}">\n  <rect x="${f(b.x)}" y="${f(b.y)}" width="${f(b.w)}" height="${f(b.h)}" fill="${BG}"/>\n${els}\n</svg>\n`;
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  triggerDownload(url,'greenpoint-logo.svg');
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+shapes.forEach(s=>{s.tex=makeTex('flat');});
+
+// ── Texture panel ─────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const targets=()=>selectedId===null?shapes:shapes.filter(s=>s.id===selectedId);
+const current=()=>targets()[0];
+
+// Preset chips
+Object.entries(PRESETS).forEach(([name,P])=>{
+  const b=document.createElement('button');
+  b.className='chip';b.textContent=P.label;b.dataset.preset=name;
+  b.addEventListener('click',()=>{
+    targets().forEach(s=>{
+      const keep={seed:s.tex.seed,img:s.tex.img};
+      s.tex=Object.assign(makeTex(name),keep);
+    });
+    updatePanel();draw();
+  });
+  $('presets').appendChild(b);
+});
+
+// Sliders
+[['sScale','vScale','scale',v=>v],['sAmount','vAmount','amount',v=>v.toFixed(2)],['sAngle','vAngle','angle',v=>v+'°']]
+.forEach(([sid,vid,key,fmt])=>{
+  $(sid).addEventListener('input',()=>{
+    const v=parseFloat($(sid).value);
+    targets().forEach(s=>{s.tex[key]=v;});
+    $(vid).textContent=fmt(v);
+    draw();
+  });
+});
+
+$('btnSeed').addEventListener('click',()=>{
+  targets().forEach(s=>{s.tex.seed=Math.random()*100;});draw();
+});
+
+$('btnAll').addEventListener('click',()=>{
+  const src=current().tex;
+  shapes.forEach(s=>{s.tex={...src};});
+  draw();
+});
+
+// Image decoding helpers (used by Palette from image)
+const MAX_IMG = 2048; // long edge; keeps us under every GPU's texture limit
+function setImgStatus(msg,bad){
+  const el=$('imgStatus');el.textContent=msg;el.classList.toggle('bad',!!bad);
+}
+// Decode a file into something drawable. Tries three routes because
+// sandboxed previews often block blob: image URLs via CSP:
+//   1. createImageBitmap(file) — no URL at all
+//   2. FileReader → data: URL
+//   3. blob: URL
+async function decodeImage(file){
+  const tries=[];
+  if(window.createImageBitmap){
+    try{ const bmp=await createImageBitmap(file); return {src:bmp,w:bmp.width,h:bmp.height}; }
+    catch(e){ tries.push('bitmap: '+e.message); }
+  }
+  const viaUrl=url=>new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>res({src:img,w:img.naturalWidth,h:img.naturalHeight});
+    img.onerror=()=>rej(new Error('image load failed'));
+    img.src=url;
+  });
+  try{
+    const dataUrl=await new Promise((res,rej)=>{
+      const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(file);
+    });
+    return await viaUrl(dataUrl);
+  }catch(e){ tries.push('data url: '+e.message); }
+  const blobUrl=URL.createObjectURL(file);
+  try{ return await viaUrl(blobUrl); }
+  catch(e){ tries.push('blob url: '+e.message); }
+  finally{ setTimeout(()=>URL.revokeObjectURL(blobUrl),0); }
+  console.warn('Image decode failed:',file.name,file.type,tries);
+  return null;
+}
+
+// Drag & drop anywhere on the page
+let dragDepth=0;
+document.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;document.body.classList.add('dropping');});
+document.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;document.body.classList.remove('dropping');}});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{
+  e.preventDefault();dragDepth=0;document.body.classList.remove('dropping');
+  paletteFromImage(e.dataTransfer.files[0]);
+});
+
+function updatePanel(keepMsg){
+  const s=current(),t=s.tex;
+  $('target').innerHTML=selectedId===null
+    ?'All shapes<small>Click a shape to texture it on its own</small>'
+    :`Shape ${s.id+1} (${s.type})<small>Click empty space to edit all shapes</small>`;
+  document.querySelectorAll('#presets .chip').forEach(b=>b.classList.toggle('on',b.dataset.preset===t.preset));
+  $('sScale').value=t.scale;$('vScale').textContent=t.scale;
+  $('sAmount').value=t.amount;$('vAmount').textContent=(+t.amount).toFixed(2);
+  $('sAngle').value=t.angle;$('vAngle').textContent=t.angle+'°';
+  $('btnAll').hidden=selectedId===null;
+  if(palettes.length) renderShapeColor();
+  renderMaterialPanel();
+}
+
+if(!gl){
+  $('noGL').hidden=false;
+  ['presets'].forEach(id=>$(id).style.display='none');
+  document.querySelectorAll('.panel .group').forEach(g=>g.style.display='none');
+}
+
+// ── Palettes ──────────────────────────────────────────────────
+// ✏️ Put your default palettes here, one per line:
+//    Name: shape colors | background
+// Colors go to shapes by their colour slot (see `ci` on each shape),
+// wrapping around if a palette has fewer colors than slots.
+const DEFAULT_PALETTES = `
+Greenpoint: #2d6b47 #1a3a2a #4caf50 | #f0f0ed
+Night: #4caf50 #c8e6c9 #2d6b47 | #10231a
+Moss: #5b7342 #2f3b25 #b5c98e | #eef0e6
+Mono: #1a3a2a #1a3a2a #1a3a2a | #ffffff
+`.trim();
+
+const PAL_STORE='greenpoint-palettes-v1';
+// The palettes written in DEFAULT_PALETTES are built in and can't be deleted.
+const isBuiltIn=name=>parsePalettes(DEFAULT_PALETTES).list.some(p=>p.name===name);
+// Put any missing built-in palettes back, in their original order, at the top.
+function withBuiltIns(list){
+  const defs=parsePalettes(DEFAULT_PALETTES).list;
+  const missing=defs.filter(d=>!list.some(p=>p.name===d.name));
+  if(!missing.length) return {list,restored:[]};
+  const out=[];
+  defs.forEach(d=>out.push(list.find(p=>p.name===d.name)||d));
+  list.forEach(p=>{if(!defs.some(d=>d.name===p.name))out.push(p);});
+  return {list:out,restored:missing.map(m=>m.name)};
+}
+let palettes=[], activePal=0, BG='#f0f0ed';
+// The palette pulled from an uploaded image lives in its own slot (activePal = -1).
+// Each new upload replaces it; it only joins the list if you press "Save to palettes".
+let imagePal=null;
+
+function normHex(h){
+  h=h.toLowerCase();
+  return h.length===4?'#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]:h;
+}
+// Parse "Name: #a #b #c | #bg" lines. Returns {list, skipped}
+function parsePalettes(text){
+  const list=[],skipped=[];
+  text.split('\n').forEach((raw,i)=>{
+    const line=raw.trim();
+    if(!line||line.startsWith('//')) return;
+    const colon=line.indexOf(':');
+    const name=colon>0?line.slice(0,colon).trim():`Palette ${list.length+1}`;
+    const body=colon>0?line.slice(colon+1):line;
+    const [main,bgPart]=body.split('|');
+    const hex=/#(?:[0-9a-f]{6}|[0-9a-f]{3})\b/gi;
+    const colors=(main.match(hex)||[]).map(normHex);
+    const bg=((bgPart||'').match(hex)||[])[0];
+    if(!colors.length){skipped.push(i+1);return;}
+    list.push({name,colors,bg:bg?normHex(bg):'#f0f0ed'});
+  });
+  return {list,skipped};
+}
+function palettesToText(list){
+  return list.map(p=>`${p.name}: ${p.colors.join(' ')} | ${p.bg}`).join('\n');
+}
+function savePalettes(){
+  try{localStorage.setItem(PAL_STORE,JSON.stringify({text:palettesToText(palettes),active:activePal,imagePal}));}catch(e){}
+}
+function loadPalettes(){
+  let text=DEFAULT_PALETTES,active=0;
+  try{
+    const saved=JSON.parse(localStorage.getItem(PAL_STORE)||'null');
+    if(saved&&saved.text){text=saved.text;active=saved.active||0;imagePal=saved.imagePal||null;}
+  }catch(e){}
+  palettes=withBuiltIns(parsePalettes(text).list).list;
+  activePal=active===-1&&imagePal?-1:Math.max(0,Math.min(active,palettes.length-1));
+}
+const pal=()=>activePal===-1&&imagePal?imagePal:palettes[activePal];
+const slotColor=ci=>pal().colors[ci%pal().colors.length];
+
+function applyPalette(i){
+  activePal=i;
+  BG=pal().bg;
+  shapes.forEach(s=>{s.color=slotColor(s.ci);});
+  savePalettes();
+  renderPalettes();renderImagePal();updatePanel();draw();
+}
+
+function renderPalettes(){
+  const box=$('palList');box.innerHTML='';
+  palettes.forEach((p,i)=>{
+    const b=document.createElement('button');
+    b.className='pal'+(i===activePal?' on':'');
+    b.title=`${p.colors.join(' ')} on ${p.bg}`;
+    b.innerHTML=`<span class="pname"></span><span class="bgchip" style="background:${p.bg}">${
+      p.colors.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</span>`;
+    b.querySelector('.pname').textContent=p.name;
+    b.addEventListener('click',()=>applyPalette(i));
+    if(!isBuiltIn(p.name)){ // built-in palettes have no delete button
+      const x=document.createElement('span');
+      x.className='del';x.textContent='×';x.title=`Delete "${p.name}"`;
+      x.addEventListener('click',e=>{
+        e.stopPropagation();
+        palettes.splice(i,1);
+        if(activePal===i) applyPalette(0);
+        else{ if(activePal>i) activePal--; savePalettes();renderPalettes(); }
+      });
+      b.appendChild(x);
+    }
+    box.appendChild(b);
+  });
+}
+
+// Per-shape colour: palette swatches + free picker
+function renderShapeColor(){
+  const box=$('shapeColorBox');
+  const s=shapes.find(o=>o.id===selectedId);
+  box.hidden=!s;
+  if(!s) return;
+  const row=$('shapeSwatches');row.innerHTML='';
+  pal().colors.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.className='swatch'+(!s.custom&&s.ci%pal().colors.length===i?' on':'');
+    b.style.background=c;b.title=c;
+    b.addEventListener('click',()=>{s.ci=i;s.custom=false;s.color=c;renderShapeColor();draw();});
+    row.appendChild(b);
+  });
+  const pick=document.createElement('input');
+  pick.type='color';pick.value=s.color;pick.title='Any color';
+  pick.addEventListener('input',()=>{s.custom=true;s.color=pick.value;draw();});
+  pick.addEventListener('change',renderShapeColor);
+  row.appendChild(pick);
+}
+
+function renderImagePal(){
+  const box=$('imgPalBox');
+  box.hidden=!imagePal;
+  if(!imagePal) return;
+  const p=imagePal,row=$('imgPalRow');row.innerHTML='';
+  const b=document.createElement('button');
+  b.className='pal'+(activePal===-1?' on':'');
+  b.title=`${p.colors.join(' ')} on ${p.bg}`;
+  b.innerHTML=`<span class="pname"></span><span class="bgchip" style="background:${p.bg}">${
+    p.colors.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</span>`;
+  b.querySelector('.pname').textContent=p.name;
+  b.addEventListener('click',()=>applyPalette(-1));
+  row.appendChild(b);
+}
+$('btnSaveImgPal').addEventListener('click',()=>{
+  if(!imagePal) return;
+  const entry={...imagePal,colors:[...imagePal.colors],name:imagePal.name.replace(/^From image: /,'')};
+  const at=palettes.findIndex(p=>p.name===entry.name);
+  if(at>=0) palettes[at]=entry; else palettes.push(entry);
+  applyPalette(at>=0?at:palettes.length-1);
+  setImgStatus(`Saved "${entry.name}" to your palettes`);
+});
+
+
+// ── Material panel ────────────────────────────────────────────
+shapes.forEach(s=>{s.mat=makeMat('solid');});
+Object.entries(MODULES).forEach(([name,M])=>{
+  const b=document.createElement('button');
+  b.className='chip';b.textContent=M.label;b.dataset.mod=name;
+  b.addEventListener('click',()=>{
+    targets().forEach(s=>{
+      const {grid,chars,seed}=s.mat;
+      s.mat=makeMat(name,{grid,chars,seed});
+    });
+    renderMaterialPanel();draw();
+  });
+  $('mods').appendChild(b);
+});
+[['sCell','vCell','cell',v=>v],['sDensity','vDensity','density',v=>v.toFixed(2)],['sWeight','vWeight','weight',v=>v.toFixed(2)]]
+.forEach(([sid,vid,key,fmt])=>{
+  $(sid).addEventListener('input',()=>{
+    const v=parseFloat($(sid).value);
+    targets().forEach(s=>{s.mat[key]=v;});
+    $(vid).textContent=fmt(v);draw();
+  });
+});
+$('chars').addEventListener('input',()=>{
+  const v=$('chars').value||'o';
+  targets().forEach(s=>{s.mat.chars=v;});draw();
+});
+document.querySelectorAll('#gridMode .chip').forEach(b=>b.addEventListener('click',()=>{
+  targets().forEach(s=>{s.mat.grid=b.dataset.grid;});
+  renderMaterialPanel();draw();
+}));
+$('btnMatSeed').addEventListener('click',()=>{
+  targets().forEach(s=>{s.mat.seed=Math.floor(Math.random()*1e6);});draw();
+});
+$('btnMatAll').addEventListener('click',()=>{
+  const src=current().mat;
+  shapes.forEach(s=>{s.mat={...src};});draw();
+});
+function renderMaterialPanel(){
+  if(!current().mat) return;
+  const m=current().mat,solid=m.module==='solid';
+  document.querySelectorAll('#mods .chip').forEach(b=>b.classList.toggle('on',b.dataset.mod===m.module));
+  document.querySelectorAll('#gridMode .chip').forEach(b=>b.classList.toggle('on',b.dataset.grid===m.grid));
+  $('matControls').hidden=solid;
+  $('charsRow').style.display=m.module==='glyph'?'':'none';
+  $('sCell').value=m.cell;$('vCell').textContent=m.cell;
+  $('sDensity').value=m.density;$('vDensity').textContent=(+m.density).toFixed(2);
+  $('sWeight').value=m.weight;$('vWeight').textContent=(+m.weight).toFixed(2);
+  $('chars').value=m.chars;
+  $('btnMatAll').hidden=selectedId===null;
+  $('texNote').hidden=solid;
+}
+
+// ── Palette + style from an image ─────────────────────────────
+// 1) k-means in Lab to find the image's main colors
+// 2) design rules turn them into bg + 3 shape colors with enough contrast
+// 3) simple pixel measurements (flatness, edges, grain, straight lines)
+//    pick a material, with the reasons shown to the user.
+const ANALYZE_SIZE=320;
+
+function srgb2lin(c){c/=255;return c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
+function lin2srgb(c){c=c<=0.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-0.055;return Math.round(Math.max(0,Math.min(1,c))*255);}
+function rgb2lab(r,g,b){
+  r=srgb2lin(r);g=srgb2lin(g);b=srgb2lin(b);
+  let x=(r*0.4124+g*0.3576+b*0.1805)/0.95047,y=r*0.2126+g*0.7152+b*0.0722,z=(r*0.0193+g*0.1192+b*0.9505)/1.08883;
+  const f=t=>t>0.008856?Math.cbrt(t):7.787*t+16/116;
+  x=f(x);y=f(y);z=f(z);
+  return [116*y-16,500*(x-y),200*(y-z)];
+}
+function lab2rgb(L,a,b){
+  let y=(L+16)/116,x=a/500+y,z=y-b/200;
+  const fi=t=>t*t*t>0.008856?t*t*t:(t-16/116)/7.787;
+  x=fi(x)*0.95047;y=fi(y);z=fi(z)*1.08883;
+  return [lin2srgb(x*3.2406-y*1.5372-z*0.4986),lin2srgb(-x*0.9689+y*1.8758+z*0.0415),lin2srgb(x*0.0557-y*0.2040+z*1.0570)];
+}
+const toHex=([r,g,b])=>'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+const dE=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2]);
+const chroma=l=>Math.hypot(l[1],l[2]);
+function relLum([r,g,b]){return 0.2126*srgb2lin(r)+0.7152*srgb2lin(g)+0.0722*srgb2lin(b);}
+function contrast(l1,l2){
+  const a=relLum(lab2rgb(...l1)),b=relLum(lab2rgb(...l2));
+  return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+}
+// Move a color's lightness away from the background until it reads (keeps its hue)
+function ensureContrast(lab,bg,min){
+  if(contrast(lab,bg)>=min) return lab;
+  const dir=lab[0]>=bg[0]?1:-1;
+  for(const d of [dir,-dir]){
+    for(let L=lab[0];L>=0&&L<=100;L+=d*3){
+      const c=[L,lab[1],lab[2]];
+      if(contrast(c,bg)>=min) return c;
+    }
+  }
+  return [bg[0]>50?15:92,lab[1]*0.5,lab[2]*0.5];
+}
+
+function kmeans(pts,k){
+  // deterministic k-means++ seeding
+  let seed=1;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const n=pts.length,C=[pts[Math.floor(rnd()*n)].slice()];
+  const d2=new Float64Array(n);
+  while(C.length<k){
+    let sum=0;
+    for(let i=0;i<n;i++){let m=Infinity;for(const c of C){const d=dE(pts[i],c);if(d<m)m=d;}d2[i]=m*m;sum+=d2[i];}
+    if(sum===0) break;
+    let t=rnd()*sum,i=0;while(i<n-1&&(t-=d2[i])>0)i++;
+    C.push(pts[i].slice());
+  }
+  const lab=new Int32Array(n);
+  for(let it=0;it<12;it++){
+    const acc=C.map(()=>[0,0,0,0]);
+    for(let i=0;i<n;i++){
+      let bi=0,bd=Infinity;
+      for(let j=0;j<C.length;j++){const d=dE(pts[i],C[j]);if(d<bd){bd=d;bi=j;}}
+      lab[i]=bi;const a=acc[bi];a[0]+=pts[i][0];a[1]+=pts[i][1];a[2]+=pts[i][2];a[3]++;
+    }
+    acc.forEach((a,j)=>{if(a[3])C[j]=[a[0]/a[3],a[1]/a[3],a[2]/a[3]];});
+  }
+  const counts=new Array(C.length).fill(0);
+  for(let i=0;i<n;i++)counts[lab[i]]++;
+  return C.map((c,j)=>({lab:c,w:counts[j]/n})).filter(c=>c.w>0);
+}
+
+function analyzeImage(img,w,h){
+  const px=img.data,pts=[],Lg=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++){
+    const l=rgb2lab(px[i*4],px[i*4+1],px[i*4+2]);
+    Lg[i]=l[0]/100;
+    if(px[i*4+3]>=128) pts.push(l);
+  }
+  const pct=v=>Math.round(v*100)+'%';
+  // ---- colors ----
+  let cl=kmeans(pts.length?pts:[[50,0,0]],7).sort((a,b)=>b.w-a.w);
+  const merged=[];
+  cl.forEach(c=>{const m=merged.find(o=>dE(o.lab,c.lab)<9);
+    if(m){const t=m.w+c.w;m.lab=m.lab.map((v,i)=>(v*m.w+c.lab[i]*c.w)/t);m.w=t;}else merged.push({...c});});
+  // 1) Distribution first. Specks (<3%) are ignored completely.
+  // MAIN_SHARE is measured against everything that isn't background, so a
+  // poster that's 70% paper still has its ink colors count as main colors.
+  const MIN_SHARE=0.03, MAIN_SHARE=0.12;
+  const byShare=[...merged].sort((a,b)=>b.w-a.w).filter((c,i)=>i===0||c.w>=MIN_SHARE);
+  // 2) The most common color becomes the background.
+  const bgC=byShare[0],bg=bgC.lab;
+  const rest=byShare.slice(1);
+  // 3) Main colors (≥8% of the image) are used as they are, most common first.
+  const fg=rest.reduce((t,c)=>t+c.w,0)||1;
+  const mains=rest.filter(c=>c.w/fg>=MAIN_SHARE);
+  const minors=rest.filter(c=>c.w/fg<MAIN_SHARE);
+  let picks=mains.slice(0,3).map(c=>({lab:c.lab.slice(),w:c.w,kind:'main'}));
+  const blended=[];
+  // 4) Still short? Small areas are softened: mixed 50/50 with their nearest
+  //    main color, so a 5% black becomes a deep version of that color, not black.
+  const mixLab=(a,b,t)=>a.map((v,i)=>v*(1-t)+b[i]*t);
+  const anchors=mains.length?mains:[bgC];
+  for(const m of minors){
+    if(picks.length>=3) break;
+    const near=anchors.reduce((b,c)=>dE(c.lab,m.lab)<dE(b.lab,m.lab)?c:b);
+    const v=mixLab(m.lab,near.lab,0.5);
+    if(picks.some(p=>dE(p.lab,v)<8)) continue;
+    picks.push({lab:v,w:m.w,kind:'soft'});blended.push(`a small area (${pct(m.w)} of the image) softened toward its nearest main color`);
+  }
+  // 5) Still short (very simple images): build in-between colors.
+  if(picks.length===0){
+    const f=bg[0]>50?-1:1;
+    picks.push({lab:[bg[0]+f*35,bg[1],bg[2]],w:0});blended.push('a shade of the background');
+  }
+  if(picks.length===1){
+    const c=picks[0].lab;
+    picks.push({lab:mixLab(c,bg,0.5),w:0},{lab:[Math.max(0,Math.min(100,c[0]+(c[0]>=bg[0]?18:-18))),c[1],c[2]],w:0});
+    blended.push('a mix with the background','a deeper/lighter version');
+  }else if(picks.length===2){
+    picks.push({lab:mixLab(picks[0].lab,picks[1].lab,0.5),w:0});blended.push('a mix of the two main colors');
+  }
+  const top=[bgC,...mains];
+  // 4) Sort those by lightness: dark / mid / light.
+  picks.sort((a,b)=>a.lab[0]-b.lab[0]);
+  // keep the three steps visibly apart
+  for(let k=1;k<3;k++) if(picks[k].lab[0]-picks[k-1].lab[0]<6) picks[k].lab[0]=Math.min(100,picks[k-1].lab[0]+6);
+  // only a light safety net: a shape that is almost the background color gets nudged
+  picks.forEach(p=>{p.lab=ensureContrast(p.lab,bg,1.4);});
+  const [low,mid,high]=picks;
+  // slots follow the Greenpoint logic: big block = mid, bars = dark, circle = light
+  const colors=[mid,low,high].map(c=>toHex(lab2rgb(...c.lab)));
+  const shareText=mains.slice(0,3).map(c=>pct(c.w)).join(', ');
+
+  // ---- style measurements ----
+  let flat=0,edges=0,axis=0,noise=0,sumL=0,sumL2=0,runs=0,runLen=0,cur=0;
+  const res=new Float32Array(w*h);
+  const EDGE=0.08;
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const i=y*w+x,L=k=>Lg[k];
+      const gx=(L(i-w+1)+2*L(i+1)+L(i+w+1)-L(i-w-1)-2*L(i-1)-L(i+w-1))/4;
+      const gy=(L(i+w-1)+2*L(i+w)+L(i+w+1)-L(i-w-1)-2*L(i-w)-L(i-w+1))/4;
+      const m=Math.hypot(gx,gy);
+      if(m<0.02)flat++;
+      if(m>EDGE){edges++;const ax=Math.abs(gx),ay=Math.abs(gy);if(Math.min(ax,ay)/Math.max(ax,ay)<0.21)axis++;
+        if(cur>0){runs++;runLen+=cur;}cur=0;}
+      else cur++;
+      let blur=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)blur+=Lg[i+dy*w+dx];
+      res[i]=Lg[i]-blur/9;noise+=Math.abs(res[i]);
+      sumL+=Lg[i];sumL2+=Lg[i]*Lg[i];
+    }
+    if(cur>0){runs++;runLen+=cur;}cur=0;
+  }
+  const N=(w-2)*(h-2);
+  // Coherence: for strong residuals, how often does a neighbour share the sign?
+  // Real grain ≈ 0.5 (random); lines and edges ≈ 0.9 (structured).
+  let hi=0,agree=0;
+  for(let y=1;y<h-2;y++)for(let x=1;x<w-2;x++){
+    const i=y*w+x;if(Math.abs(res[i])<0.015)continue;
+    hi++;const sR=Math.sign(res[i+1])===Math.sign(res[i]),sD=Math.sign(res[i+w])===Math.sign(res[i]);
+    agree+=Math.max(sR,sD);
+  }
+  const coherence=hi?agree/hi:1;
+  const f={
+    flat:flat/N, edges:edges/N, axis:edges?axis/edges:0, noise:noise/N,
+    contrast:Math.sqrt(Math.max(0,sumL2/N-(sumL/N)**2)),
+    nColors:merged.filter(c=>c.w>0.04).length,
+    detail:runs?runLen/runs/w:1, coherence, strong:hi/N,
+  };
+  const cell=Math.round(Math.max(6,Math.min(14,6+f.detail*60))); // >14 turns the small circle into a single block
+
+  // ---- decide material ----
+  const reasons=[
+    `Background: the most common color (${pct(bgC.w)} of the image)`,
+    `Shapes: the main colors after it (${shareText||'none'}), sorted dark → mid → light: bars dark, big block mid, circle light`,
+    ...(blended.length?[`Fewer than 3 main colors (12%+ of the non-background area), so the rest came from ${blended.join(' and ')}`]:[]),
+    `Areas under 3% are ignored`,
+  ];
+  let style;
+  if(f.noise>0.02&&f.coherence<0.78&&f.flat<0.4){
+    style={module:'solid',shader:'grain',amount:Math.max(0.3,Math.min(0.8,f.noise*12))};
+    reasons.push(`Random fine grain across the image (few flat areas, ${pct(f.flat)}) → Grain shader`);
+  }else if(f.flat>0.7&&f.edges>0.004&&f.nColors<=5){
+    if(f.axis>0.6){
+      style={module:'pixel',grid:'page',cell,density:0.9,weight:1};
+      reasons.push(`Flat color blocks (${pct(f.flat)}) with straight horizontal/vertical edges (${pct(f.axis)}) → Pixel on the page grid`);
+    }else{
+      style={module:'solid'};
+      reasons.push(`Flat color fields (${pct(f.flat)}) with curved or angled edges and ${f.nColors} main colors → Solid, clean shapes`);
+    }
+  }else if(f.edges<0.004){
+    style={module:'solid',shader:'noise',amount:0.4};
+    reasons.push(`Smooth gradients with no hard edges → soft Noise shader`);
+  }else if(f.axis>0.55&&f.edges>0.08){
+    style={module:'lines',grid:'page',cell:Math.max(6,cell-2),density:1,weight:0.4};
+    reasons.push(`Dense straight parallel lines (${pct(f.axis)} of edges) → Lines on the page grid`);
+  }else if(f.edges>0.12&&f.contrast>0.2){
+    style=f.nColors<=3
+      ?{module:'binary',grid:'shape',cell,density:1,weight:0.6}
+      :{module:'cross',grid:'shape',cell,density:1,weight:0.7};
+    reasons.push(`Busy, high-contrast marks (${pct(f.edges)} edge pixels)${f.nColors<=3?' in few colors → Binary':' → Cross'}`);
+  }else if(f.contrast<0.15){
+    style={module:'dots',grid:'shape',cell,density:1,weight:0.6};
+    reasons.push(`Soft, low-contrast image → Dots`);
+  }else{
+    style={module:'pixel',grid:'shape',cell,density:Math.max(0.6,Math.min(0.95,0.65+f.flat*0.3)),weight:1};
+    reasons.push(`Mixed detail → Pixel, density from how much of the image is flat`);
+  }
+  if(style.cell) reasons.push(`Cell ${style.cell}px, from the average size of details in the image`);
+  return {palette:{colors,bg:toHex(lab2rgb(...bg))},style,reasons,features:f};
+}
+
+function applyStyle(st){
+  shapes.forEach(s=>{
+    const seed=s.mat.seed,chars=s.mat.chars;
+    if(st.module==='solid'){
+      s.mat=makeMat('solid',{seed,chars});
+      s.tex=st.shader?Object.assign(makeTex(st.shader),{amount:st.amount}):makeTex('flat');
+    }else{
+      s.mat=makeMat(st.module,{grid:st.grid,cell:st.cell,density:st.density,weight:st.weight,seed,chars});
+      s.tex=makeTex('flat');
+    }
+  });
+}
+
+function showAnalysis(thumb,res,name){
+  const box=$('analysis');box.hidden=false;box.innerHTML='';
+  const top=document.createElement('div');top.className='anTop';
+  thumb.className='anThumb';top.appendChild(thumb);
+  const sw=document.createElement('div');sw.className='bgchip';sw.style.background=res.palette.bg;
+  res.palette.colors.forEach(c=>{const d=document.createElement('span');d.className='sw';d.style.background=c;sw.appendChild(d);});
+  const nm=document.createElement('div');nm.className='anName';nm.textContent=name;
+  const col=document.createElement('div');col.appendChild(nm);col.appendChild(sw);
+  top.appendChild(col);box.appendChild(top);
+  // Reasons are still computed (res.reasons) but no longer shown in the card.
+}
+
+async function paletteFromImage(file){
+  if(!file) return;
+  const heic=/\.(heic|heif)$/i.test(file.name)||/heic|heif/i.test(file.type);
+  if(!/^image\//.test(file.type)&&!heic){setImgStatus(`"${file.name}" isn't an image file.`,true);return;}
+  setImgStatus('Reading colors…');
+  const d=await decodeImage(file);
+  if(!d){
+    setImgStatus(heic
+      ?`This browser can't open HEIC photos. Export "${file.name}" as JPG or PNG and try again, or open this page in Safari.`
+      :`Couldn't read "${file.name}" (${file.type||'unknown type'}). Try opening this HTML file directly in Chrome or Safari instead of a preview window.`,true);
+    return;
+  }
+  const k=Math.min(1,ANALYZE_SIZE/Math.max(d.w,d.h));
+  const c=document.createElement('canvas');
+  c.width=Math.max(3,Math.round(d.w*k));c.height=Math.max(3,Math.round(d.h*k));
+  const cx=c.getContext('2d',{willReadFrequently:true});
+  cx.drawImage(d.src,0,0,c.width,c.height);
+  if(d.src.close) d.src.close();
+  const res=analyzeImage(cx.getImageData(0,0,c.width,c.height),c.width,c.height);
+
+  const name=file.name.replace(/\.[^.]+$/,'').slice(0,24)||'image';
+  imagePal={name:'From image: '+name,colors:res.palette.colors,bg:res.palette.bg};
+  if($('autoStyle').checked) applyStyle(res.style);
+  else res.reasons=res.reasons.filter(r=>!/→|Cell/.test(r));
+  applyPalette(-1);   // replaces the previous image palette; also redraws + saves
+  setImgStatus('');
+  showAnalysis(c,res,name);
+}
+$('fileImage').addEventListener('change',e=>{paletteFromImage(e.target.files[0]);e.target.value='';});
+
+loadPalettes();
+BG=pal().bg;
+shapes.forEach(s=>{s.color=slotColor(s.ci);});
+renderPalettes();
+renderImagePal();
+updatePanel();
+draw();
+</script>
+</body>
+</html>
